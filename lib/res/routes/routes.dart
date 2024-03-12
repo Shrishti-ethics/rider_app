@@ -22,19 +22,6 @@ class AppRoutes {
       transition: Transition.leftToRight,
       transitionDuration: Duration(milliseconds: 50),
     ),
-  //   GetPage(
-  //     name: RouteName.callview,
-  //     page: () => CallView(),
-  //     binding: CallBinding(),
-  //     transition: Transition.leftToRight,
-  //     transitionDuration: Duration(milliseconds: 50),
-  //   ),
-  //   GetPage(
-  //     name: RouteName.globalSearchView,
-  //     page: () => GlobalSearchScreen(),
-  //     binding: GlobalSearchBinding(),
-  //     transition: Transition.leftToRight,
-  //     transitionDuration: Duration(milliseconds: 50),
-  //   ),
+
    ];
 }

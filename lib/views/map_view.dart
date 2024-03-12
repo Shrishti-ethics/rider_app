@@ -23,54 +23,47 @@ class MapView extends StatefulWidget {
 class _MapViewState extends State<MapView> {
   BitmapDescriptor markerIcon = BitmapDescriptor.defaultMarker;
 
-  Location _locationController = new Location();
+  Location _locationController = Location();
 
   final Completer<GoogleMapController> _mapController = Completer<GoogleMapController>();
 
-  LatLng? currentPosition = null;
+  LatLng? currentPosition;
 
   static const LatLng _latLngDelhi = LatLng(30.7333, 76.7794);
   static const LatLng _latLngNoida = LatLng(30.3752, 76.7821);
 
   double _heading = 0.0;
 
-
-  Map<PolylineId , Polyline> polylines = {};
+  Map<PolylineId, Polyline> polylines = {};
 
   @override
   void initState() {
     super.initState();
     addCustomIcon();
-    getlocation().then((_) =>
-    {
-      getPolylinePoints().then((coordinates) =>
-      {
-        print("cordinates: $coordinates"),
-        generatePolyLinesFromPoints(coordinates),
-      }),
-    },
-    );
+    getlocation().then((_) {
+      getPolylinePoints().then((coordinates) {
+        print("coordinates: $coordinates");
+        generatePolyLinesFromPoints(coordinates);
+      });
+    });
     _listenToSensorData();
-
   }
 
   void _listenToSensorData() {
     accelerometerEvents.listen((AccelerometerEvent event) {
-      // Get orientation using accelerometer data
       double x = event.x;
       double y = event.y;
       double z = event.z;
-      // Calculate orientation
       double orientation = -1 * atan2(x, sqrt(y * y + z * z));
       setState(() {
-        _heading = orientation * (360); // Convert radians to degrees
+        _heading = orientation * (360);
       });
     });
   }
 
   void addCustomIcon() async {
     final ByteData data = await rootBundle.load("assets/images/car.png");
-    final ui.Codec codec = await ui.instantiateImageCodec(data.buffer.asUint8List(), targetHeight: 80, targetWidth: 80); // Adjust the size as needed
+    final ui.Codec codec = await ui.instantiateImageCodec(data.buffer.asUint8List(), targetHeight: 80, targetWidth: 80);
     final ui.FrameInfo fi = await codec.getNextFrame();
     final ByteData? resizedData = await fi.image.toByteData(format: ui.ImageByteFormat.png);
 
@@ -84,7 +77,6 @@ class _MapViewState extends State<MapView> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -93,8 +85,7 @@ class _MapViewState extends State<MapView> {
         child: Text("Fetching Your Current Location..."),
       )
           : GoogleMap(
-        onMapCreated: ((GoogleMapController controller) =>
-            _mapController.complete(controller)),
+        onMapCreated: ((GoogleMapController controller) => _mapController.complete(controller)),
         initialCameraPosition: CameraPosition(target: _latLngDelhi, zoom: 15),
         markers: {
           Marker(
@@ -102,11 +93,6 @@ class _MapViewState extends State<MapView> {
             icon: markerIcon,
             position: currentPosition!,
             rotation: _heading,
-          ),
-          Marker(
-            markerId: MarkerId("_sourceLocation"),
-            icon: BitmapDescriptor.defaultMarker,
-            position: _latLngDelhi,
           ),
           Marker(
             markerId: MarkerId("_destinationLocation"),
@@ -119,59 +105,57 @@ class _MapViewState extends State<MapView> {
     );
   }
 
-  Future<void> _cameratopostion(LatLng position) async{
+  Future<void> _cameratopostion(LatLng position) async {
     final GoogleMapController controller = await _mapController.future;
-    CameraPosition _newCameraPosition = CameraPosition(target: position , zoom:  15);
-    await controller.animateCamera(CameraUpdate.newCameraPosition(_newCameraPosition),
-    );
-
-
-
+    CameraPosition _newCameraPosition = CameraPosition(target: position, zoom: 15);
+    await controller.animateCamera(CameraUpdate.newCameraPosition(_newCameraPosition));
   }
 
-  Future<void> getlocation() async{
-    bool _serviceEnabled ;
+  Future<void> getlocation() async {
+    bool _serviceEnabled;
     PermissionStatus _permissionGranted;
 
     _serviceEnabled = await _locationController.serviceEnabled();
-    if(_serviceEnabled){
+    if (!_serviceEnabled) {
       _serviceEnabled = await _locationController.requestService();
-    }else{
+    } else {
       return;
     }
 
     _permissionGranted = await _locationController.hasPermission();
-    if(_permissionGranted == PermissionStatus.denied){
+    if (_permissionGranted == PermissionStatus.denied) {
       _permissionGranted = await _locationController.requestPermission();
-      if(_permissionGranted != PermissionStatus.granted){
+      if (_permissionGranted != PermissionStatus.granted) {
         return;
       }
     }
 
     _locationController.onLocationChanged.listen((LocationData currentLocation) {
-      if(currentLocation.latitude != null &&
-      currentLocation.longitude != null){
+      if (currentLocation.latitude != null && currentLocation.longitude != null) {
         setState(() {
-          currentPosition = LatLng(currentLocation.latitude! , currentLocation.longitude!);
+          currentPosition = LatLng(currentLocation.latitude!, currentLocation.longitude!);
           print(currentPosition);
           _cameratopostion(currentPosition!);
         });
       }
     });
   }
-  Future<List<LatLng>> getPolylinePoints() async{
-    List<LatLng> polylineCoordinates = [] ;
+
+  Future<List<LatLng>> getPolylinePoints() async {
+    List<LatLng> polylineCoordinates = [];
     PolylinePoints polylinePoints = PolylinePoints();
     PolylineResult result = await polylinePoints.getRouteBetweenCoordinates(
-        GOOGLE_MAPS_API_KEY, PointLatLng(_latLngDelhi.latitude, _latLngDelhi.longitude),
-        PointLatLng(_latLngNoida.latitude, _latLngNoida.longitude) , travelMode: TravelMode.driving);
+      GOOGLE_MAPS_API_KEY,
+      PointLatLng(currentPosition!.latitude, currentPosition!.longitude),
+      PointLatLng(_latLngNoida.latitude, _latLngNoida.longitude),
+      travelMode: TravelMode.driving,
+    );
 
-    if(result.points.isNotEmpty){
+    if (result.points.isNotEmpty) {
       result.points.forEach((PointLatLng point) {
-        polylineCoordinates.add(LatLng(point.latitude, point.longitude)); // Fix: Use point.longitude instead of point.latitude
+        polylineCoordinates.add(LatLng(point.latitude, point.longitude));
       });
-    }
-    else{
+    } else {
       print(result.errorMessage);
     }
     return polylineCoordinates;
